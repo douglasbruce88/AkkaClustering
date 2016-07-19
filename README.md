@@ -57,4 +57,36 @@ This file contains course notes
 
 ## Interacting with the Cluster
 
-- C
+- Look at the original Globomantics solution.The API is the top-level actor. It can handle `LoginEvent` and `VideoWatchedEvent` messages.
+- The `VideoWatchedEvent` message is triggered when a user watches a video and it contains the `videoID` and `userID`. It sends this to the `VideosWatchedStore`, a persistent actor that uses `Akka.Persistence` which persists the state to disk.
+ - This actor sits behind a pull router which contains multiple stores. Event messages are broadcast to all stores, requests are round-robined.
+ - This means is one actor crashes, the others than pick up the slack until it recovers.
+- When it received a `LoginEvent`, it spawns a dedicated `RecommendationWorkflow` actor to do the recommender algorithm. This algorithm requires details of videos we have seen which come from the `VideosWatchEventStore` store, and details of unwatched ones which we get from the `VideosDetailsFetcher`.
+ - The fetcher requests information from a remote API, and is gated to only allow one request at a time to stop us swamping our network connection.
+ - We can control how many concurrent requests we allow by controlling the size of the `VideoRequests` pool, and only start the job when we have at least one routee for each type of router.
+ - The actor is terminated once its work is finished.
+- The important bit is the message flow, sending messages to pools of watched and unwatched video fetchers. These pools can be scaled independently.
+
+
+- Now let's convert this to clustering in the same way in the previous module.
+- We also modify the HOCON further, specifically the `router` config sections and their `cluster` subsections which make them cluster-aware.
+- The `roles` attribute means we only deploy to modes with the `API` role, which stops us deploying actors to our `Lighthouse` seed node.
+- If we fire up two nodes and then a client, we can see how the messages are processed.
+
+
+- At this stage things have become quite complicated, which is where microservices come in.
+- Looking at the solution, we can split out the core API and workflow, roles that are stateless (fetchers) and those with state (stores) into separate projects.
+ - These can run as separate nodes in the cluster with different roles, and we can reason about individual roles rather than the system as a whole.
+ - They can be deployed separately which is very useful when considering state.
+ - Nodes in different roles may have different requirements e.g. internal access, persistence, so we can use different machine characteristics.
+ - We can thus scale out individual roles.
+- We model stateful and stateless nodes to start with no actors onto which other nodes can remote deploy actors.
+- Fire up one of each service and then use the client.
+
+
+- There are a few fallacies of distributed computing to help us develop with these in mind:
+ - The network is not reliable. If we are waiting for a response, use a timeout.
+ - Latency is not zero. If we receive a response after the timeout due to high latency, we need to be able to handle it properly and ensure the state isn't corrupted
+ - Topology is not static. We can move actors from local to remote without changing code, so be aware that we don't know to where the actors are deployed.
+ - Transport cost is not zero. Distributing will almost definitely slow the system under low load scenarios due to the network overhead.
+ - The network is not homogeneous. Some remote nodes may be in different data centres and might have difference specs. For example round robin might not work if one node is stronger than the other so we can use other routing strategies or have the actors ask for work.
