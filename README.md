@@ -40,4 +40,7 @@ This file contains course notes
  - We need to change the actor system name and verify the listening port.
  - We need to include ourself as a listed seed node. Lighthouse will do this if we forget but it is good practice.
 
+
+- **NOTE:** I had several problems with HOCON spelling mistakes and capitalisation here.
+
 ## Interacting with the Cluster
