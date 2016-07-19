@@ -1,5 +1,7 @@
 # Building Distributed Systems with Akka.NET clustering
 
+This file contains course notes
+
 ## Course Overview
 
 - Scalability and fault tolerance
