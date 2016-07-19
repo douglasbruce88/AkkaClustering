@@ -41,6 +41,20 @@ This file contains course notes
  - We need to include ourself as a listed seed node. Lighthouse will do this if we forget but it is good practice.
 
 
-- **NOTE:** I had several problems with HOCON spelling mistakes and capitalisation here.
+- **NOTE:** I had several problems with HOCON spelling mistakes and capitalisation here. In the end I pasted their completed config in and it worked, still got no idea what had changed.
+
+
+- Gossip: special messages that spread throughout the cluster and spread the state of other nodes in the system, eventually giving all the nodes a consistent state (zombie apocalypse!). They contain their view of all other nodes at any one time.
+
+
+- Cluster lifecycle:
+ - We have a seed node A and other node B.
+ - C wants to join. It knows about A and sends it a message asking it to join. It is knew about multiple seeds it would send it to all.
+ - A responds with an acknowledgement, then C will send a message to the fastest responded to say it is joining.
+ - The next gossip message from A will contain information about C, and so B will know that C is 'Joining.
+ - Once all nodes know that C is joining, A will promote it to 'UP' and spread this via gossip.
+ - Leaving is similar, C would declare itself as 'Leaving' via gossip and it is promoted to 'Exiting', at which point is shuts down, and C is removed from gossip.
 
 ## Interacting with the Cluster
+
+- C
